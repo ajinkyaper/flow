@@ -1,0 +1,44 @@
+# name of the workflow
+name: Merge Develop into Stage
+
+# Specify when the workflow should run
+on:
+  schedule:
+    # Runs at 06:30 UTC every Wednesday, which is 12:00 noon IST
+    - cron: '30 6 * * 3'
+  workflow_dispatch:
+    # Allows manual execution of the workflow from the GitHub UI
+
+# Define the jobs to be executed by the workflow
+jobs:
+  merge-branches:
+    # Specify the type of virtual environment the job will run on
+    runs-on: ubuntu-latest
+
+    # List of steps that will be executed as part of the job
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        # Checkout the 'stage' branch and fetch the complete history
+        with:
+          fetch-depth: 0  # Fetches all history for all tags and branches
+          ref: stage
+
+      - name: Configure Git
+        # Use environment variables to securely pass Git configuration
+        env:
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+        run: |
+          # Set global Git configuration for user email and name
+          git config --global user.email "${GIT_USER_EMAIL}"
+          git config --global user.name "${GIT_USER_NAME}"
+
+      - name: Merge develop branch into stage
+        run: |
+          # Fetch the latest commits from the develop branch
+          git fetch --no-tags --prune --depth=1 origin develop
+          # Merge the fetched branch into the current branch (stage)
+          git merge origin/develop --allow-unrelated-histories --no-ff -m "Merging develop into stage [skip ci]"
+          # Push the merged changes back to the remote stage branch
+          git push origin stage
